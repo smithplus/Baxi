@@ -92,7 +92,7 @@ const App: React.FC = () => {
         
         {/* --- Columna Izquierda (Controles) --- */}
         {/* Ocupa todo el ancho en móvil, 2/5 en 'md', y 1/3 en 'xl'. Con scroll si es necesario. */}
-        <div class="w-full md:w-2/5 xl:w-1/3 flex flex-col md:p-4 space-y-3 md:space-y-4 overflow-y-auto bg-background md:relative">
+        <div className="w-full md:w-2/5 xl:w-1/3 flex flex-col md:p-4 space-y-3 md:space-y-4 overflow-y-auto bg-background md:relative">
           {/* 
             - bg-background: Siempre tiene fondo para legibilidad.
             - z-10: En móvil, se superpone al mapa (que es z-0).
