@@ -8,14 +8,14 @@ import VectorSource from 'ol/source/Vector.js';
 import Feature from 'ol/Feature.js';
 import Point from 'ol/geom/Point.js';
 import LineString from 'ol/geom/LineString.js';
-import { fromLonLat } from 'ol/proj.js'; 
+import { fromLonLat, toLonLat } from 'ol/proj.js';
 import { getDistance } from 'ol/sphere.js'; 
 import Style from 'ol/style/Style.js';
 import Stroke from 'ol/style/Stroke.js';
 import Fill from 'ol/style/Fill.js';
 import CircleStyle from 'ol/style/Circle.js';
 import Text from 'ol/style/Text.js';
-
+import { FeatureLike } from 'ol/Feature.js';
 
 import { PlaceResult, RouteDetails } from '@/types';
 import { BUENOS_AIRES_CENTER } from '@/constants';
@@ -33,6 +33,7 @@ const OpenLayersMap: React.FC<OpenLayersMapProps> = ({ origin, destination, onRo
   const mapRef = useRef<HTMLDivElement>(null);
   const olMapRef = useRef<Map | null>(null);
   const vectorSourceRef = useRef<VectorSource | null>(null);
+  const currentRouteFeatureRef = useRef<Feature | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || olMapRef.current) return;
@@ -48,7 +49,10 @@ const OpenLayersMap: React.FC<OpenLayersMapProps> = ({ origin, destination, onRo
         }),
         new VectorLayer({
           source: initialVectorSource,
-          style: (feature) => feature.get('styleOverride') || feature.getStyle()
+          style: (feature: FeatureLike) => {
+            const olFeature = feature as Feature;
+            return olFeature.get('styleOverride') || olFeature.getStyle();
+          }
         }),
       ],
       view: new View({
@@ -59,14 +63,52 @@ const OpenLayersMap: React.FC<OpenLayersMapProps> = ({ origin, destination, onRo
     });
     olMapRef.current = map;
     
-    const handleResize = () => map.updateSize();
+    const handleResize = () => {
+      if (olMapRef.current) {
+        olMapRef.current.updateSize();
+      }
+    };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      map.setTarget(undefined);
-      olMapRef.current = null;
+      if (olMapRef.current) {
+        olMapRef.current.setTarget(undefined);
+        olMapRef.current = null;
+      }
     };
+  }, []);
+
+  const fetchRouteFromOSRM = useCallback(async (originCoords: {lng: number, lat: number}, destCoords: {lng: number, lat: number}) => {
+    const url = `http://router.project-osrm.org/route/v1/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?overview=full&geometries=geojson`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `OSRM request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const distanceInMeters = route.distance;
+        const durationInSeconds = route.duration;
+        
+        const routeCoordinates = route.geometry.coordinates.map((coord: [number, number]) => fromLonLat(coord));
+        
+        return {
+          distanceMeters: distanceInMeters,
+          durationSeconds: durationInSeconds,
+          geometry: routeCoordinates,
+        };
+      } else {
+        throw new Error("No route found by OSRM.");
+      }
+    } catch (error) {
+      console.error("Error fetching route from OSRM:", error);
+      throw error;
+    }
   }, []);
 
   useEffect(() => {
@@ -127,65 +169,58 @@ const OpenLayersMap: React.FC<OpenLayersMapProps> = ({ origin, destination, onRo
     
     vectorSource.addFeatures(featuresToAdd);
 
+    if (currentRouteFeatureRef.current) {
+      vectorSource.removeFeature(currentRouteFeatureRef.current);
+      currentRouteFeatureRef.current = null;
+    }
+
     if (origin && destination) {
-      try {
-        const originCoordsForDistance = [origin.coordinates.lng, origin.coordinates.lat];
-        const destinationCoordsForDistance = [destination.coordinates.lng, destination.coordinates.lat];
-        
-        const distanceInMeters = getDistance(originCoordsForDistance, destinationCoordsForDistance);
-        
-        onRouteCalculated({
-          distanceMeters: distanceInMeters,
-          durationSeconds: 0,
+      const originLonLat = { lng: origin.coordinates.lng, lat: origin.coordinates.lat };
+      const destinationLonLat = { lng: destination.coordinates.lng, lat: destination.coordinates.lat };
+
+      fetchRouteFromOSRM(originLonLat, destinationLonLat)
+        .then(routeDetailsOSRM => {
+          if (routeDetailsOSRM) {
+            onRouteCalculated({
+              distanceMeters: routeDetailsOSRM.distanceMeters,
+              durationSeconds: routeDetailsOSRM.durationSeconds,
+            });
+
+            const routeFeature = new Feature(new LineString(routeDetailsOSRM.geometry));
+            routeFeature.setStyle(new Style({
+              stroke: new Stroke({
+                color: '#F59E0B',
+                width: 4,
+              }),
+            }));
+            vectorSource.addFeature(routeFeature);
+            currentRouteFeatureRef.current = routeFeature;
+            
+            if (extentToFit && extentToFit.length === 4) {
+                if (extentToFit.every(coord => typeof coord === 'number' && isFinite(coord))) {
+                   map?.getView().fit(extentToFit, { padding: [70, 50, 70, 50], duration: 600, maxZoom: 16 });
+                }
+            }
+          }
+        })
+        .catch(error => {
+          console.error("Error calculating OSRM route:", error);
+          onRouteCalculationError(error.message || "Error al calcular la ruta con OSRM.");
         });
 
-        const line = new Feature(
-          new LineString([
-            fromLonLat(originCoordsForDistance),
-            fromLonLat(destinationCoordsForDistance),
-          ])
-        );
-        line.setStyle(new Style({
-          stroke: new Stroke({
-            color: '#F59E0B', 
-            width: 3, // Slightly thinner line
-          }),
-        }));
-        vectorSource.addFeature(line);
-
-         if (extentToFit && extentToFit.length === 2 && featuresToAdd.length === 2) { 
-            const firstPointGeom = featuresToAdd[0].getGeometry() as Point;
-            const secondPointGeom = featuresToAdd[1].getGeometry() as Point;
-            if (firstPointGeom && secondPointGeom) {
-                const firstPointCoords = firstPointGeom.getCoordinates();
-                const secondPointCoords = secondPointGeom.getCoordinates();
-                extentToFit[0] = Math.min(firstPointCoords[0], secondPointCoords[0]);
-                extentToFit[1] = Math.min(firstPointCoords[1], secondPointCoords[1]);
-                extentToFit[2] = Math.max(firstPointCoords[0], secondPointCoords[0]);
-                extentToFit[3] = Math.max(firstPointCoords[1], secondPointCoords[1]);
-            }
-        }
-      } catch (error) {
-        console.error("Error calculating distance or drawing route:", error);
-        onRouteCalculationError("Error al calcular la distancia.");
-        onRouteCalculated(null);
-      }
     } else {
-      onRouteCalculated(null); // Clear route if origin or dest is removed
+      onRouteCalculated(null);
+      if (extentToFit && extentToFit.length === 4) {
+         if (extentToFit.every(coord => typeof coord === 'number' && isFinite(coord))) {
+             map?.getView().fit(extentToFit, { padding: [70, 50, 70, 50], duration: 600, maxZoom: 16 });
+         }
+      } else if (extentToFit && extentToFit.length === 2) { 
+        map?.getView().animate({ center: extentToFit, zoom: 14, duration: 600 });
+      } else if (!origin && !destination) { 
+         map?.getView().animate({ center: fromLonLat([BUENOS_AIRES_CENTER.lng, BUENOS_AIRES_CENTER.lat]), zoom: 12, duration: 600 });
+      }
     }
-
-    if (extentToFit && extentToFit.length === 4) {
-        // Ensure extent has valid numbers before fitting
-        if (extentToFit.every(coord => typeof coord === 'number' && isFinite(coord))) {
-            map.getView().fit(extentToFit, { padding: [70, 50, 70, 50], duration: 600, maxZoom: 16 });
-        }
-    } else if (extentToFit && extentToFit.length === 2) { // Only one point selected
-      map.getView().animate({ center: extentToFit, zoom: 14, duration: 600 });
-    } else if (!origin && !destination) { // No points, reset view
-       map.getView().animate({ center: fromLonLat([BUENOS_AIRES_CENTER.lng, BUENOS_AIRES_CENTER.lat]), zoom: 12, duration: 600 });
-    }
-
-  }, [origin, destination, onRouteCalculated, onRouteCalculationError]);
+  }, [origin, destination, onRouteCalculated, onRouteCalculationError, fetchRouteFromOSRM]);
 
   // Use Tailwind classes for full height and width
   return <div ref={mapRef} className="w-full h-full" role="application" aria-label="Mapa interactivo para seleccionar origen y destino"></div>;
