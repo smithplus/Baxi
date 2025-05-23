@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -18,8 +17,8 @@ import CircleStyle from 'ol/style/Circle.js';
 import Text from 'ol/style/Text.js';
 
 
-import { PlaceResult, RouteDetails } from '../../types';
-import { BUENOS_AIRES_CENTER } from '../../constants';
+import { PlaceResult, RouteDetails } from '@/types';
+import { BUENOS_AIRES_CENTER } from '@/constants';
 
 interface OpenLayersMapProps {
   origin: PlaceResult | null;
