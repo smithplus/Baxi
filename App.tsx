@@ -92,7 +92,7 @@ const App: React.FC = () => {
         
         {/* --- Columna Izquierda (Controles) --- */}
         {/* Ocupa todo el ancho en móvil, 2/5 en 'md', y 1/3 en 'xl'. Con scroll si es necesario. */}
-        <div className="w-full md:w-2/5 xl:w-1/3 flex flex-col p-3 md:p-4 space-y-3 md:space-y-4 overflow-y-auto bg-background z-10 md:relative">
+        <div class="w-full md:w-2/5 xl:w-1/3 flex flex-col md:p-4 space-y-3 md:space-y-4 overflow-y-auto bg-background md:relative">
           {/* 
             - bg-background: Siempre tiene fondo para legibilidad.
             - z-10: En móvil, se superpone al mapa (que es z-0).
@@ -130,10 +130,9 @@ const App: React.FC = () => {
         */}
         <div className="flex-grow absolute md:relative inset-0 md:inset-auto z-0">
           {/* Contenedor interno para OpenLayersMap. Maneja el padding del header en móviles. */}
-          <div className="w-full h-full pt-14 md:pt-0"> 
+          <div className="w-full h-full"> 
             {/* 
-              - pt-14: Padding superior en móviles para que el mapa no quede bajo el header. Ajustar si es necesario.
-              - md:pt-0: Sin padding superior en desktop.
+              - pt-14: Padding superior en móviles para que el mapa no quede bajo el header. Ajustar si es necesario. (Eliminado)
             */}
             <OpenLayersMap 
               origin={origin} 

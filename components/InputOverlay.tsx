@@ -1,4 +1,3 @@
-
 import React from 'react';
 import LocationSearchInput from './LocationSearchInput';
 import DateTimeSelector from './DateTimeSelector';
@@ -22,7 +21,7 @@ const InputOverlay: React.FC<InputOverlayProps> = ({
   onDateTimeChange,
 }) => {
   return (
-    <div className="absolute top-4 left-4 right-4 z-20 p-1">
+    <div className="absolute top-20 left-4 right-4 z-20 p-1">
       <div className="bg-card rounded-xl shadow-xl p-4 space-y-3">
         <div className="flex items-center space-x-3">
           <div className="flex flex-col items-center self-stretch pt-1">
