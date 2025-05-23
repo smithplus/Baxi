@@ -1,13 +1,13 @@
-
 const CACHE_NAME = 'taxi-ba-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico',
-  '/logo192.png',
-  '/logo512.png',
-  // Add other static assets if any (e.g., bundled JS/CSS if not using CDN for everything)
+  '/Baxi.png',
+  // './assets/other-icon.png', // Ejemplo si tuvieras otros assets locales específicos para cachear
+  // Los bundles de JS/CSS de Vite suelen tener hashes en sus nombres para el cache-busting,
+  // por lo que cachearlos estáticamente aquí podría no ser ideal sin una estrategia de actualización.
+  // Por ahora, nos enfocaremos en los assets estáticos básicos.
 ];
 
 self.addEventListener('install', (event) => {
