@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FBBF24" /> 
+    <meta
+      name="description"
+      content="Calculadora de Tarifas de Taxi en Buenos Aires"
+    />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Calculadora Taxi BA</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v9.1.0/ol.css">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: '#FBBF24', // Amber 400 (Vibrant Yellow)
+                light: '#FDE68A',  // Amber 200
+                dark: '#F59E0B',   // Amber 500
+              },
+              secondary: { // Dark Gray / Black
+                DEFAULT: '#1F2937', // Gray 800
+                light: '#374151',  // Gray 700
+                dark: '#111827',   // Gray 900
+              },
+              accent: { // Optional accent
+                DEFAULT: '#FB923C', // Orange 400
+                light: '#FDBA74',  // Orange 300
+                dark: '#F97316',   // Orange 500
+              },
+              background: '#F3F4F6', // Light Gray (Gray 100)
+              card: '#FFFFFF',       // White
+              textPrimary: '#1F2937', // Gray 800 (Dark text)
+              textSecondary: '#4B5563', // Gray 600 (Medium text)
+              slate: { // Keep slate for continuity if used by components, but prioritize theme colors
+                50: '#f8fafc',
+                100: '#f1f5f9', // Similar to background
+                200: '#e2e8f0',
+                300: '#cbd5e1',
+                // ... other shades
+              }
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "ol/": "https://esm.sh/ol@9.1.0/",
+    "ol": "https://esm.sh/ol@9.1.0/dist/ol.js",
+    "@react-google-maps/api": "https://esm.sh/@react-google-maps/api@^2.20.6"
+  }
+}
+</script>
+</head>
+  <body class="bg-background">
+    <noscript>Necesitas habilitar JavaScript para correr esta aplicación.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html><link rel="stylesheet" href="index.css">
+<script src="index.tsx" type="module"></script>

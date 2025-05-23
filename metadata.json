@@ -1,0 +1,5 @@
+{
+  "name": "Calculadora de Tarifas de Taxi BA",
+  "description": "Una Progressive Web App para estimar el costo de viajes en taxi en Buenos Aires, Argentina. Calcula tarifas basadas en distancia, horario (diurno/nocturno) y tarifas oficiales.",
+  "requestFramePermissions": []
+}
