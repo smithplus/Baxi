@@ -36,6 +36,7 @@ const InputOverlay: React.FC<InputOverlayProps> = ({
               onPlaceSelected={onOriginSelected}
               placeholder="Punto de partida"
               compact={true}
+              isOrigin={true}
             />
             <LocationSearchInput
               id="destination-overlay"

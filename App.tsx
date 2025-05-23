@@ -143,6 +143,9 @@ const App: React.FC = () => {
           </div>
         </div>
       </div> {/* Fin de flex-grow flex ... */}
+      <div className="fixed bottom-2 right-2 text-xs text-gray-400 select-none">
+        v0.0.0
+      </div>
     </div>
   );
 };

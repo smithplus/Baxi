@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useCallback } from 'react';
 import { PlaceResult, NominatimResult } from '../types'; // Adjusted path
-import { NOMINATIM_SEARCH_URL } from '../constants'; // Adjusted path
+import { NOMINATIM_SEARCH_URL, NOMINATIM_REVERSE_URL } from '../constants'; // Adjusted path
 import LoadingSpinner from './LoadingSpinner';
 
 interface LocationSearchInputProps {
@@ -10,6 +9,7 @@ interface LocationSearchInputProps {
   onPlaceSelected: (place: PlaceResult | null) => void;
   placeholder?: string;
   compact?: boolean; // New prop
+  isOrigin?: boolean; // New prop to identify if it's the origin input
 }
 
 const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
@@ -26,11 +26,11 @@ const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) =
   return debounced as (...args: Parameters<F>) => ReturnType<F>;
 };
 
-
-const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ id, label, onPlaceSelected, placeholder, compact = false }) => {
+const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ id, label, onPlaceSelected, placeholder, compact = false, isOrigin = false }) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeolocating, setIsGeolocating] = useState(false); // New state for geolocation loading
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +76,80 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ id, label, on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedFetchSuggestions = useCallback(debounce(fetchSuggestions, 400), []);
 
+  const fetchAddressFromCoordinates = async (lat: number, lon: number): Promise<PlaceResult | null> => {
+    setIsLoading(true); // Reuse isLoading or use isGeolocating
+    try {
+      const params = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
+        format: 'json',
+        addressdetails: '1',
+      });
+      const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Nominatim reverse geocoding request failed');
+      }
+      const data: NominatimResult = await response.json();
+      if (data && data.display_name) {
+        return {
+          address: data.display_name,
+          coordinates: {
+            lat: parseFloat(data.lat),
+            lng: parseFloat(data.lon),
+          },
+          raw: data,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to fetch address from coordinates:", error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUseMyLocationClick = async () => {
+    if (!navigator.geolocation) {
+      alert("La geolocalización no es compatible con tu navegador.");
+      return;
+    }
+    setIsGeolocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const place = await fetchAddressFromCoordinates(latitude, longitude);
+          if (place) {
+            setQuery(place.address);
+            onPlaceSelected(place);
+            setShowSuggestions(false);
+          } else {
+            alert("No se pudo obtener la dirección para tu ubicación actual. Verifica tu conexión o intenta más tarde.");
+          }
+        } catch (error) {
+          // Error ya logueado en fetchAddressFromCoordinates
+          alert("Ocurrió un error al buscar la dirección para tu ubicación.");
+        } finally {
+          setIsGeolocating(false);
+        }
+      },
+      (error) => {
+        console.error("Error getting current position:", error);
+        let message = "Error al obtener la ubicación.";
+        if (error.code === error.PERMISSION_DENIED) {
+          message = "Permiso de geolocalización denegado. Por favor, habilítalo en la configuración de tu navegador.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message = "Información de ubicación no disponible.";
+        } else if (error.code === error.TIMEOUT) {
+          message = "Se agotó el tiempo de espera para obtener la ubicación.";
+        }
+        alert(message);
+        setIsGeolocating(false);
+      }
+    );
+  };
+
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = event.target.value;
     setQuery(newQuery);
@@ -108,7 +182,6 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ id, label, on
     }
   };
 
-
   return (
     <div className="w-full relative">
       {!compact && (
@@ -128,13 +201,24 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ id, label, on
           onBlur={handleBlur}
           onFocus={handleFocus}
           placeholder={placeholder || "Escriba una dirección..."}
-          className={`w-full ${compact ? 'px-3 py-2.5' : 'px-4 py-3'} text-textPrimary bg-slate-100 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm transition-colors duration-150 ease-in-out`}
+          className={`w-full ${compact ? 'px-3 py-2.5' : 'px-4 py-3'} ${isOrigin && compact ? 'pr-10' : ''} text-textPrimary bg-slate-100 border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm transition-colors duration-150 ease-in-out`}
           autoComplete="off"
         />
-        {isLoading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+        {(isLoading || isGeolocating) && (
+          <div className={`absolute right-3 ${isOrigin && compact ? 'right-10' : 'right-3'} top-1/2 transform -translate-y-1/2`}>
             <LoadingSpinner size="sm" />
           </div>
+        )}
+        {isOrigin && compact && (
+          <button 
+            type="button"
+            onClick={handleUseMyLocationClick}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-primary focus:outline-none"
+            aria-label="Usar mi ubicación actual"
+            disabled={isGeolocating}
+          >
+            <span role="img" aria-label="location icon" style={{ fontSize: '1.25rem' }}>🎯</span>
+          </button>
         )}
       </div>
       {showSuggestions && suggestions.length > 0 && (
