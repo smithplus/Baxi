@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { PlaceResult, RouteDetails, Tariff } from './types';
 import { fetchTariffs } from './services/firebaseService';
@@ -84,44 +83,67 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col font-sans overflow-hidden">
-      <header className="bg-card text-textPrimary py-3 shadow-md z-30 flex-shrink-0">
+      <header className="bg-card text-textPrimary py-3 shadow-md z-20 flex-shrink-0">
         <h1 className="text-lg font-semibold text-center">Calculadora Taxi BA</h1>
       </header>
 
-      <div className="flex-grow relative">
-        {/* Map as background */}
-        <div className="absolute inset-0 z-0">
-          <OpenLayersMap 
-            origin={origin} 
-            destination={destination} 
-            onRouteCalculated={handleRouteCalculated}
-            onRouteCalculationError={handleRouteCalculationError}
+      {/* Contenedor principal para el contenido: se vuelve fila en 'md' y más grandes */}
+      <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+        
+        {/* --- Columna Izquierda (Controles) --- */}
+        {/* Ocupa todo el ancho en móvil, 2/5 en 'md', y 1/3 en 'xl'. Con scroll si es necesario. */}
+        <div className="w-full md:w-2/5 xl:w-1/3 flex flex-col p-3 md:p-4 space-y-3 md:space-y-4 overflow-y-auto bg-background z-10 md:relative">
+          {/* 
+            - bg-background: Siempre tiene fondo para legibilidad.
+            - z-10: En móvil, se superpone al mapa (que es z-0).
+            - md:relative: En desktop, vuelve a ser parte del flujo normal.
+          */}
+          <InputOverlay
+            origin={origin}
+            destination={destination}
+            onOriginSelected={(place) => { setOrigin(place); if (!place) { setRouteDetails(null); setEstimatedFareResult(null); setFareCalculationError(null);}}}
+            onDestinationSelected={(place) => { setDestination(place); if (!place) { setRouteDetails(null); setEstimatedFareResult(null); setFareCalculationError(null);}}}
+            travelDateTime={travelDateTime}
+            onDateTimeChange={setTravelDateTime}
+          />
+
+          {/* Espaciador: empuja el BottomPanel hacia abajo */}
+          <div className="flex-grow"></div>
+
+          <BottomPanel
+              estimatedFareResult={estimatedFareResult}
+              currentTariff={currentTariff}
+              isLoadingTariff={isLoadingTariff}
+              isCalculatingFare={isCalculatingFare}
+              fareCalculationError={fareCalculationError}
+              tariffError={tariffError}
+              routeDetails={routeDetails}
+              showTariffDetails={showTariffDetails}
+              onToggleTariffDetails={() => setShowTariffDetails(!showTariffDetails)}
           />
         </div>
 
-        {/* Input Overlay */}
-        <InputOverlay
-          origin={origin}
-          destination={destination}
-          onOriginSelected={(place) => { setOrigin(place); if (!place) { setRouteDetails(null); setEstimatedFareResult(null); setFareCalculationError(null);}}}
-          onDestinationSelected={(place) => { setDestination(place); if (!place) { setRouteDetails(null); setEstimatedFareResult(null); setFareCalculationError(null);}}}
-          travelDateTime={travelDateTime}
-          onDateTimeChange={setTravelDateTime}
-        />
-
-        {/* Bottom Panel */}
-        <BottomPanel
-            estimatedFareResult={estimatedFareResult}
-            currentTariff={currentTariff}
-            isLoadingTariff={isLoadingTariff}
-            isCalculatingFare={isCalculatingFare}
-            fareCalculationError={fareCalculationError}
-            tariffError={tariffError}
-            routeDetails={routeDetails}
-            showTariffDetails={showTariffDetails}
-            onToggleTariffDetails={() => setShowTariffDetails(!showTariffDetails)}
-        />
-      </div>
+        {/* --- Contenedor del Mapa (Unificado) --- */}
+        {/* 
+          - Móvil (por defecto): Posicionado absolutamente detrás de los controles (z-0) y debajo del header.
+          - Desktop ('md' y más grandes): Se convierte en la columna derecha, ocupando el espacio restante.
+        */}
+        <div className="flex-grow absolute md:relative inset-0 md:inset-auto z-0">
+          {/* Contenedor interno para OpenLayersMap. Maneja el padding del header en móviles. */}
+          <div className="w-full h-full pt-14 md:pt-0"> 
+            {/* 
+              - pt-14: Padding superior en móviles para que el mapa no quede bajo el header. Ajustar si es necesario.
+              - md:pt-0: Sin padding superior en desktop.
+            */}
+            <OpenLayersMap 
+              origin={origin} 
+              destination={destination} 
+              onRouteCalculated={handleRouteCalculated}
+              onRouteCalculationError={handleRouteCalculationError}
+            />
+          </div>
+        </div>
+      </div> {/* Fin de flex-grow flex ... */}
     </div>
   );
 };
